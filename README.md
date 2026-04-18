@@ -1,2 +1,2 @@
-# jinoad
+# Jino
 Jino data parser
