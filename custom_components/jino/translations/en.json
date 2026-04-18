@@ -1,16 +1,49 @@
-
 {
   "config": {
+    "flow_title": "Service Billing Monitor",
+    "abort": {
+      "already_configured": "This Jino account is already configured.",
+      "reconfigure_successful": "Reconfiguration was successful."
+    },
+    "error": {
+      "invalid_nightscout_accounts": "Invalid Nightscout accounts JSON."
+    },
     "step": {
       "user": {
-        "title": "Add JinoAD Sensor",
-        "description": "Configure your sensor",
+        "title": "Add Service Billing Monitor",
+        "description": "Enter Jino credentials and optional Nightscout accounts JSON. Example: [{\"label\": \"sofia\", \"login\": \"user\", \"password\": \"pass\"}]",
         "data": {
-          "name": "Name",
-          "sensor_id": "Sensor ID (used in MQTT topic)"
+          "jino_login": "Jino login",
+          "jino_password": "Jino password",
+          "nightscout_accounts": "Nightscout accounts JSON",
+          "scan_interval_minutes": "Update interval, minutes"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Service Billing Monitor",
+        "description": "Update credentials and settings.",
+        "data": {
+          "jino_login": "Jino login",
+          "jino_password": "Jino password",
+          "nightscout_accounts": "Nightscout accounts JSON",
+          "scan_interval_minutes": "Update interval, minutes"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Service Billing Monitor options",
+        "description": "Update the polling interval and Nightscout accounts JSON.",
+        "data": {
+          "nightscout_accounts": "Nightscout accounts JSON",
+          "scan_interval_minutes": "Update interval, minutes"
         }
       }
     },
-    "error": {}
+    "error": {
+      "invalid_nightscout_accounts": "Invalid Nightscout accounts JSON."
+    }
   }
 }

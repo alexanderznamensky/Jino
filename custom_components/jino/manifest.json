@@ -1,12 +1,16 @@
-
 {
   "domain": "jino",
-  "name": "Jino data parcer",
-  "version": "1.0.0",
+  "name": "Jino data parser",
+  "version": "1.0.1",
   "documentation": "https://github.com/alexanderznamensky/Jino",
   "issue_tracker": "https://github.com/alexanderznamensky/Jino/issues",
-  "requirements": [],
-  "dependencies": ["mqtt"],
-  "codeowners": ["@alexanderznamensky"],
-  "config_flow": true
+  "requirements": [
+    "beautifulsoup4>=4.12.0",
+    "requests>=2.31.0"
+  ],
+  "dependencies": [],
+  "config_flow": true,
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "codeowners": ["@alexanderznamensky"]
 }

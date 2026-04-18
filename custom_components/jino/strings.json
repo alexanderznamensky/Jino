@@ -1,0 +1,62 @@
+{
+  "config": {
+    "flow_title": "Jino",
+    "abort": {
+      "already_configured": "Эта учетная запись Jino уже настроена.",
+      "reconfigure_successful": "Перенастройка успешно завершена."
+    },
+    "error": {
+      "invalid_auth": "Неверный логин или пароль Jino.",
+      "cannot_connect": "Не удалось подключиться к Jino."
+    },
+    "step": {
+      "user": {
+        "title": "Добавление Jino",
+        "description": "Введите логин и пароль Jino, а также интервал обновления.",
+        "data": {
+          "jino_login": "Логин Jino",
+          "jino_password": "Пароль Jino",
+          "scan_interval_minutes": "Интервал обновления, минут"
+        }
+      },
+      "nightscout_account": {
+        "title": "Добавление аккаунта Nightscout",
+        "description": "Введите логин и пароль Nightscout. Если нужно добавить ещё один аккаунт, включите переключатель ниже.",
+        "data": {
+          "nightscout_login": "Логин Nightscout",
+          "nightscout_password": "Пароль Nightscout",
+          "add_another": "Добавить ещё один аккаунт"
+        }
+      },
+      "reconfigure": {
+        "title": "Перенастройка Jino",
+        "description": "Обновите логин, пароль Jino и интервал обновления.",
+        "data": {
+          "jino_login": "Логин Jino",
+          "jino_password": "Пароль Jino",
+          "scan_interval_minutes": "Интервал обновления, минут"
+        }
+      },
+      "reconfigure_nightscout_account": {
+        "title": "Добавление аккаунта Nightscout",
+        "description": "Введите логин и пароль Nightscout. Если нужно добавить ещё один аккаунт, включите переключатель ниже.",
+        "data": {
+          "nightscout_login": "Логин Nightscout",
+          "nightscout_password": "Пароль Nightscout",
+          "add_another": "Добавить ещё один аккаунт"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Параметры Jino",
+        "description": "Измените интервал обновления.",
+        "data": {
+          "scan_interval_minutes": "Интервал обновления, минут"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "config": {
+    "flow_title": "Мониторинг оплат сервисов",
+    "abort": {
+      "already_configured": "Этот аккаунт Jino уже настроен.",
+      "reconfigure_successful": "Повторная настройка выполнена успешно."
+    },
+    "error": {
+      "invalid_nightscout_accounts": "Некорректный JSON со списком аккаунтов Nightscout."
+    },
+    "step": {
+      "user": {
+        "title": "Добавление мониторинга оплат",
+        "description": "Введите логин и пароль Jino, а также при необходимости JSON со списком аккаунтов Nightscout. Пример: [{\"label\": \"sofia\", \"login\": \"user\", \"password\": \"pass\"}]",
+        "data": {
+          "jino_login": "Логин Jino",
+          "jino_password": "Пароль Jino",
+          "nightscout_accounts": "JSON аккаунтов Nightscout",
+          "scan_interval_minutes": "Интервал обновления, минут"
+        }
+      },
+      "reconfigure": {
+        "title": "Повторная настройка мониторинга оплат",
+        "description": "Обновите учетные данные и параметры.",
+        "data": {
+          "jino_login": "Логин Jino",
+          "jino_password": "Пароль Jino",
+          "nightscout_accounts": "JSON аккаунтов Nightscout",
+          "scan_interval_minutes": "Интервал обновления, минут"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Параметры мониторинга оплат",
+        "description": "Измените интервал обновления и JSON со списком аккаунтов Nightscout.",
+        "data": {
+          "nightscout_accounts": "JSON аккаунтов Nightscout",
+          "scan_interval_minutes": "Интервал обновления, минут"
+        }
+      }
+    },
+    "error": {
+      "invalid_nightscout_accounts": "Некорректный JSON со списком аккаунтов Nightscout."
+    }
+  }
+}
