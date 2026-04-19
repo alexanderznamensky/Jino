@@ -1,32 +1,55 @@
 {
   "config": {
-    "flow_title": "Мониторинг оплат сервисов",
+    "flow_title": "Jino data parser",
     "abort": {
       "already_configured": "Этот аккаунт Jino уже настроен.",
       "reconfigure_successful": "Повторная настройка выполнена успешно."
     },
     "error": {
-      "invalid_nightscout_accounts": "Некорректный JSON со списком аккаунтов Nightscout."
+      "invalid_nightscout_accounts": "Некорректный JSON со списком аккаунтов Nightscout.",
+      "invalid_auth": "Неверный логин или пароль.",
+      "cannot_connect": "Не удалось подключиться.",
+      "required": "Это поле обязательно."
     },
     "step": {
       "user": {
-        "title": "Добавление мониторинга оплат",
-        "description": "Введите логин и пароль Jino, а также при необходимости JSON со списком аккаунтов Nightscout. Пример: [{\"label\": \"sofia\", \"login\": \"user\", \"password\": \"pass\"}]",
+        "title": "Добавление Jino data parser",
+        "description": "Введите логин и пароль Jino.",
         "data": {
           "jino_login": "Логин Jino",
           "jino_password": "Пароль Jino",
-          "nightscout_accounts": "JSON аккаунтов Nightscout",
           "scan_interval_minutes": "Интервал обновления, минут"
         }
       },
+      "nightscout_account": {
+        "title": "Настройка Nightscout",
+        "description": "При необходимости добавьте аккаунт Nightscout. Если авторизация отключена, а логин и пароль пустые, интеграция будет создана без сенсоров Nightscout.",
+        "data": {
+          "use_nightscout_auth": "Использовать авторизацию Nightscout",
+          "nightscout_login": "Логин Nightscout",
+          "nightscout_password": "Пароль Nightscout",
+          "add_another": "Добавить ещё один аккаунт",
+          "jino_data_parser": "Jino data parser"
+        }
+      },
       "reconfigure": {
-        "title": "Повторная настройка мониторинга оплат",
-        "description": "Обновите учетные данные и параметры.",
+        "title": "Повторная настройка Jino data parser",
+        "description": "Обновите учётные данные и параметры.",
         "data": {
           "jino_login": "Логин Jino",
           "jino_password": "Пароль Jino",
-          "nightscout_accounts": "JSON аккаунтов Nightscout",
           "scan_interval_minutes": "Интервал обновления, минут"
+        }
+      },
+      "reconfigure_nightscout_account": {
+        "title": "Настройка Nightscout",
+        "description": "Обновите список аккаунтов Nightscout. Если авторизация отключена, а логин и пароль пустые, интеграция будет сохранена без сенсоров Nightscout.",
+        "data": {
+          "use_nightscout_auth": "Использовать авторизацию Nightscout",
+          "nightscout_login": "Логин Nightscout",
+          "nightscout_password": "Пароль Nightscout",
+          "add_another": "Добавить ещё один аккаунт",
+          "jino_data_parser": "Jino data parser"
         }
       }
     }
@@ -34,10 +57,9 @@
   "options": {
     "step": {
       "init": {
-        "title": "Параметры мониторинга оплат",
-        "description": "Измените интервал обновления и JSON со списком аккаунтов Nightscout.",
+        "title": "Параметры Jino data parser",
+        "description": "Измените интервал обновления.",
         "data": {
-          "nightscout_accounts": "JSON аккаунтов Nightscout",
           "scan_interval_minutes": "Интервал обновления, минут"
         }
       }

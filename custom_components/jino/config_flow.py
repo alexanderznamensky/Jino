@@ -23,6 +23,7 @@ from .const import (
 
 CONF_NS_LOGIN = "nightscout_login"
 CONF_NS_PASSWORD = "nightscout_password"
+CONF_USE_NIGHTSCOUT_AUTH = "use_nightscout_auth"
 CONF_ADD_ANOTHER = "add_another"
 
 
@@ -42,12 +43,17 @@ def _user_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
     )
 
 
-def _nightscout_schema() -> vol.Schema:
+def _nightscout_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
+    defaults = defaults or {}
     return vol.Schema(
         {
-            vol.Required(CONF_NS_LOGIN, default=""): str,
-            vol.Required(CONF_NS_PASSWORD, default=""): str,
-            vol.Optional(CONF_ADD_ANOTHER, default=False): bool,
+            vol.Optional(
+                CONF_USE_NIGHTSCOUT_AUTH,
+                default=defaults.get(CONF_USE_NIGHTSCOUT_AUTH, False),
+            ): bool,
+            vol.Optional(CONF_NS_LOGIN, default=defaults.get(CONF_NS_LOGIN, "")): str,
+            vol.Optional(CONF_NS_PASSWORD, default=defaults.get(CONF_NS_PASSWORD, "")): str,
+            vol.Optional(CONF_ADD_ANOTHER, default=defaults.get(CONF_ADD_ANOTHER, False)): bool,
         }
     )
 
@@ -106,31 +112,50 @@ class JinoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_nightscout_account(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
+        errors: dict[str, str] = {}
+
         if user_input is not None:
-            login = user_input[CONF_NS_LOGIN].strip()
-            password = user_input[CONF_NS_PASSWORD]
+            use_auth = bool(user_input.get(CONF_USE_NIGHTSCOUT_AUTH, False))
+            login = user_input.get(CONF_NS_LOGIN, "").strip()
+            password = user_input.get(CONF_NS_PASSWORD, "")
 
-            if login and password:
-                self._nightscout_accounts.append(
-                    {
-                        "login": login,
-                        "password": password,
-                    }
-                )
+            has_any_credentials = bool(login or password)
+            has_full_credentials = bool(login and password)
 
-            if user_input.get(CONF_ADD_ANOTHER):
-                return self.async_show_form(
-                    step_id="nightscout_account",
-                    data_schema=_nightscout_schema(),
-                    errors={},
-                )
+            if use_auth and not login:
+                errors[CONF_NS_LOGIN] = "required"
 
-            return self._create_entry()
+            if use_auth and not password:
+                errors[CONF_NS_PASSWORD] = "required"
+
+            if has_any_credentials and not login:
+                errors[CONF_NS_LOGIN] = "required"
+
+            if has_any_credentials and not password:
+                errors[CONF_NS_PASSWORD] = "required"
+
+            if not errors:
+                if has_full_credentials:
+                    self._nightscout_accounts.append(
+                        {
+                            "login": login,
+                            "password": password,
+                        }
+                    )
+
+                if user_input.get(CONF_ADD_ANOTHER):
+                    return self.async_show_form(
+                        step_id="nightscout_account",
+                        data_schema=_nightscout_schema(),
+                        errors={},
+                    )
+
+                return self._create_entry()
 
         return self.async_show_form(
             step_id="nightscout_account",
-            data_schema=_nightscout_schema(),
-            errors={},
+            data_schema=_nightscout_schema(user_input),
+            errors=errors,
         )
 
     async def async_step_reconfigure(
@@ -187,47 +212,66 @@ class JinoConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_reconfigure_nightscout_account(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
+        errors: dict[str, str] = {}
+
         if user_input is not None:
-            login = user_input[CONF_NS_LOGIN].strip()
-            password = user_input[CONF_NS_PASSWORD]
+            use_auth = bool(user_input.get(CONF_USE_NIGHTSCOUT_AUTH, False))
+            login = user_input.get(CONF_NS_LOGIN, "").strip()
+            password = user_input.get(CONF_NS_PASSWORD, "")
 
-            if login and password:
-                self._nightscout_accounts.append(
-                    {
-                        "login": login,
-                        "password": password,
-                    }
+            has_any_credentials = bool(login or password)
+            has_full_credentials = bool(login and password)
+
+            if use_auth and not login:
+                errors[CONF_NS_LOGIN] = "required"
+
+            if use_auth and not password:
+                errors[CONF_NS_PASSWORD] = "required"
+
+            if has_any_credentials and not login:
+                errors[CONF_NS_LOGIN] = "required"
+
+            if has_any_credentials and not password:
+                errors[CONF_NS_PASSWORD] = "required"
+
+            if not errors:
+                if has_full_credentials:
+                    self._nightscout_accounts.append(
+                        {
+                            "login": login,
+                            "password": password,
+                        }
+                    )
+
+                if user_input.get(CONF_ADD_ANOTHER):
+                    return self.async_show_form(
+                        step_id="reconfigure_nightscout_account",
+                        data_schema=_nightscout_schema(),
+                        errors={},
+                    )
+
+                entry = self._reconfigure_entry
+                self.hass.config_entries.async_update_entry(
+                    entry,
+                    title=self._jino_login,
+                    data={
+                        **entry.data,
+                        CONF_JINO_LOGIN: self._jino_login,
+                        CONF_JINO_PASSWORD: self._jino_password,
+                        CONF_NIGHTSCOUT_ACCOUNTS: self._nightscout_accounts,
+                    },
+                    options={
+                        **entry.options,
+                        CONF_SCAN_INTERVAL_MINUTES: self._scan_interval,
+                    },
                 )
-
-            if user_input.get(CONF_ADD_ANOTHER):
-                return self.async_show_form(
-                    step_id="reconfigure_nightscout_account",
-                    data_schema=_nightscout_schema(),
-                    errors={},
-                )
-
-            entry = self._reconfigure_entry
-            self.hass.config_entries.async_update_entry(
-                entry,
-                title=self._jino_login,
-                data={
-                    **entry.data,
-                    CONF_JINO_LOGIN: self._jino_login,
-                    CONF_JINO_PASSWORD: self._jino_password,
-                    CONF_NIGHTSCOUT_ACCOUNTS: self._nightscout_accounts,
-                },
-                options={
-                    **entry.options,
-                    CONF_SCAN_INTERVAL_MINUTES: self._scan_interval,
-                },
-            )
-            await self.hass.config_entries.async_reload(entry.entry_id)
-            return self.async_abort(reason="reconfigure_successful")
+                await self.hass.config_entries.async_reload(entry.entry_id)
+                return self.async_abort(reason="reconfigure_successful")
 
         return self.async_show_form(
             step_id="reconfigure_nightscout_account",
-            data_schema=_nightscout_schema(),
-            errors={},
+            data_schema=_nightscout_schema(user_input),
+            errors=errors,
         )
 
     def _create_entry(self) -> FlowResult:
