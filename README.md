@@ -1,7 +1,7 @@
 # Jino data parser for Home Assistant
 
 Кастомная интеграция Home Assistant для мониторинга аккаунта **[Jino](https://jino.ru/)**: баланса, даты окончания услуг и доменов.  
-Дополнительно поддерживается мониторинг аккаунтов **Nightscout Easy** из той же интеграции.  
+Дополнительно поддерживается мониторинг аккаунтов **[Nightscout Easy](https://auth.nightscout-easy.ru/)** из того же ресурса.  
 Интеграция работает через `config_flow`, использует `DataUpdateCoordinator` и создаёт сенсоры в Home Assistant. :contentReference[oaicite:0]{index=0} :contentReference[oaicite:1]{index=1} :contentReference[oaicite:2]{index=2}
 
 ## Возможности
@@ -154,31 +154,6 @@
 Также рассчитывается `days_left`.  
 Эта логика реализована в `api.py`. :contentReference[oaicite:14]{index=14}
 
-## Структура интеграции
-
-- `__init__.py` — загрузка интеграции и регистрация платформ :contentReference[oaicite:15]{index=15}
-- `api.py` — работа с Jino и Nightscout Easy, авторизация, парсинг, GraphQL-запросы :contentReference[oaicite:16]{index=16}
-- `config_flow.py` — настройка через UI Home Assistant, проверка логина/пароля, options flow :contentReference[oaicite:17]{index=17}
-- `const.py` — константы интеграции и атрибуты сенсоров :contentReference[oaicite:18]{index=18}
-- `coordinator.py` — обновление данных по расписанию через `DataUpdateCoordinator` :contentReference[oaicite:19]{index=19}
-- `entity_descriptions.py` — описание сущностей :contentReference[oaicite:20]{index=20}
-- `sensor.py` — сенсоры Jino и Nightscout :contentReference[oaicite:21]{index=21}
-- `manifest.json` — метаданные интеграции и зависимости :contentReference[oaicite:22]{index=22}
-- `strings.json` — локализация шагов настройки и ошибок :contentReference[oaicite:23]{index=23}
-
-## Возможные проблемы
-
-### Неверный логин или пароль
-Если данные Jino введены неверно, интеграция вернёт ошибку авторизации.
-
-### Не удалось подключиться
-Может возникать при временной недоступности Jino или проблемах сети.
-
-### Данные Nightscout не появились
-Проверьте логин и пароль Nightscout Easy, а также доступность страницы авторизации.
-
-Тексты ошибок для UI описаны в `strings.json`. :contentReference[oaicite:24]{index=24}
-
 ## Требования
 
 Интеграция использует зависимости:
@@ -186,19 +161,8 @@
 - `requests>=2.31.0`
 - `beautifulsoup4>=4.12.0`
 
-Версия в `manifest.json`: `1.0.1`. :contentReference[oaicite:25]{index=25}
 
-## Roadmap
+## 📄 Лицензия
 
-Потенциально можно добавить:
+MIT License
 
-- кнопки принудительного обновления
-- бинарные сенсоры для статусов "истекает скоро" / "просрочено"
-- отдельные устройства для доменов
-- диагностику соединения
-- поддержку HACS release workflow
-
-## Обратная связь
-
-- Documentation: `https://github.com/alexanderznamensky/Jino`
-- Issues: `https://github.com/alexanderznamensky/Jino/issues` :contentReference[oaicite:26]{index=26}
