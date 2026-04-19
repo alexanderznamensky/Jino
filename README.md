@@ -2,7 +2,7 @@
 
 Кастомная интеграция Home Assistant для мониторинга аккаунта **[Jino](https://jino.ru/)**: баланса, даты окончания услуг и доменов.  
 Дополнительно поддерживается мониторинг аккаунтов **[Nightscout Easy](https://auth.nightscout-easy.ru/)** из того же ресурса.  
-Интеграция работает через `config_flow`, использует `DataUpdateCoordinator` и создаёт сенсоры в Home Assistant. :contentReference[oaicite:0]{index=0} :contentReference[oaicite:1]{index=1} :contentReference[oaicite:2]{index=2}
+Интеграция работает через `config_flow`, использует `DataUpdateCoordinator` и создаёт сенсоры в Home Assistant.
 
 ## 📊 Возможности
 
@@ -24,7 +24,7 @@
 - ✅ количество дней до окончания
 - ✅ текстовое уведомление по сроку оплаты/доступа
 
-Сенсоры создаются на платформе `sensor`. Интеграция определена как `cloud_polling` и использует библиотеки `requests` и `beautifulsoup4`. :contentReference[oaicite:3]{index=3} :contentReference[oaicite:4]{index=4}
+Сенсоры создаются на платформе `sensor`. Интеграция определена как `cloud_polling` и использует библиотеки `requests` и `beautifulsoup4`.
 
 ## 📊 Что создаётся в Home Assistant
 
@@ -79,7 +79,7 @@
 - `message`
 - `name`
 
-Список атрибутов и логика создания сенсоров реализованы в `const.py` и `sensor.py`. :contentReference[oaicite:5]{index=5} :contentReference[oaicite:6]{index=6}
+Список атрибутов и логика создания сенсоров реализованы в `const.py` и `sensor.py`.
 
 ## 🚀 Установка
 
@@ -117,7 +117,7 @@
 - интервал обновления в минутах
 
 После этого можно добавить один или несколько аккаунтов **Nightscout**.  
-Если Nightscout не нужен, поля можно оставить пустыми и завершить настройку. :contentReference[oaicite:7]{index=7} :contentReference[oaicite:8]{index=8}
+Если Nightscout не нужен, поля можно оставить пустыми и завершить настройку.
 
 ## 🔧 Параметры
 
@@ -129,7 +129,7 @@
 ### Дополнительно
 - список аккаунтов **Nightscout Easy**
 
-Интервал обновления хранится в `options` и может быть изменён после добавления интеграции через параметры. По умолчанию используется интервал **60 минут**. :contentReference[oaicite:9]{index=9} :contentReference[oaicite:10]{index=10} :contentReference[oaicite:11]{index=11}
+Интервал обновления хранится в `options` и может быть изменён после добавления интеграции через параметры. По умолчанию используется интервал **60 минут**. 
 
 ## 📱 Принцип работы
 
@@ -140,7 +140,7 @@
 3. Получает список доменов
 4. Для каждого домена получает дополнительную информацию по продлению
 5. При необходимости авторизуется в Nightscout Easy и получает срок действия доступа
-6. Передаёт все данные в Home Assistant через `DataUpdateCoordinator` :contentReference[oaicite:12]{index=12} :contentReference[oaicite:13]{index=13}
+6. Передаёт все данные в Home Assistant через `DataUpdateCoordinator`
 
 ## Сообщения и расчёт сроков
 
@@ -152,7 +152,7 @@
 - `Все в порядке! ...`
 
 Также рассчитывается `days_left`.  
-Эта логика реализована в `api.py`. :contentReference[oaicite:14]{index=14}
+Эта логика реализована в `api.py`.
 
 ## Требования
 
