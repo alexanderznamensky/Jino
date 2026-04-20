@@ -1,7 +1,7 @@
 {
   "domain": "jino",
   "name": "Jino data parser",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "documentation": "https://github.com/alexanderznamensky/Jino",
   "issue_tracker": "https://github.com/alexanderznamensky/Jino/issues",
   "requirements": [
