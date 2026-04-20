@@ -209,6 +209,19 @@ class JinoDomainsClient:
                 return match.group(1)
         return None
 
+    @staticmethod
+    def _is_retryable_error(err: Exception) -> bool:
+        if isinstance(err, (requests.exceptions.Timeout, requests.exceptions.ConnectionError)):
+            return True
+
+        if isinstance(err, requests.exceptions.HTTPError):
+            response = err.response
+            if response is None:
+                return False
+            return response.status_code in (500, 502, 503, 504)
+
+        return False
+
     def authenticate(self) -> None:
         response = self._session.get(self.LOGIN_PAGE, timeout=self._timeout)
         response.raise_for_status()
@@ -260,19 +273,37 @@ class JinoDomainsClient:
         if operation_name:
             payload["operationName"] = operation_name
 
-        response = self._session.post(
-            self.GRAPHQL_URL,
-            headers=self._build_headers(),
-            json=payload,
-            timeout=self._timeout,
-        )
-        response.raise_for_status()
+        last_error: Exception | None = None
 
-        data = response.json()
-        if data.get("errors"):
-            raise BillingApiError(json.dumps(data["errors"], ensure_ascii=False))
+        for attempt in range(3):
+            try:
+                response = self._session.post(
+                    self.GRAPHQL_URL,
+                    headers=self._build_headers(),
+                    json=payload,
+                    timeout=self._timeout,
+                )
+                response.raise_for_status()
 
-        return data
+                data = response.json()
+                if data.get("errors"):
+                    raise BillingApiError(json.dumps(data["errors"], ensure_ascii=False))
+
+                return data
+
+            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, requests.exceptions.HTTPError) as err:
+                last_error = err
+
+                if not self._is_retryable_error(err):
+                    raise
+
+                if attempt < 2:
+                    time.sleep(attempt + 1)
+
+        if last_error is not None:
+            raise last_error
+
+        raise BillingApiError("Jino GraphQL request failed without details")
 
     def get_balance_info(self) -> dict[str, Any]:
         result = self._gql(self.BALANCE_QUERY, operation_name="GetBalance")

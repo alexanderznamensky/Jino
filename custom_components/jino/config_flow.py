@@ -37,7 +37,7 @@ def _user_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
                 CONF_SCAN_INTERVAL_MINUTES,
                 default=defaults.get(CONF_SCAN_INTERVAL_MINUTES, DEFAULT_SCAN_INTERVAL_MINUTES),
             ): NumberSelector(
-                NumberSelectorConfig(min=1, max=1440, step=1, mode=NumberSelectorMode.BOX)
+                NumberSelectorConfig(min=5, max=1440, step=1, mode=NumberSelectorMode.BOX)
             ),
         }
     )
@@ -318,7 +318,7 @@ class JinoOptionsFlow(config_entries.OptionsFlow):
                         DEFAULT_SCAN_INTERVAL_MINUTES,
                     ),
                 ): NumberSelector(
-                    NumberSelectorConfig(min=1, max=1440, step=1, mode=NumberSelectorMode.BOX)
+                    NumberSelectorConfig(min=5, max=1440, step=1, mode=NumberSelectorMode.BOX)
                 ),
             }
         )
