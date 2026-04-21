@@ -157,6 +157,7 @@ class JinoDomainSensor(BaseBillingEntity):
             ATTR_CAN_BE_RENEWED_FROM_BALANCE: data.get("can_be_renewed_from_balance"),
             ATTR_DAYS_LEFT: data.get("days_left"),
             ATTR_MESSAGE: data.get("message"),
+            "execution_seconds": self.coordinator.data.get("execution_seconds"),
         }
 
 
@@ -202,4 +203,5 @@ class NightscoutSensor(BaseBillingEntity):
             ATTR_DAYS_LEFT: data.get("days_left"),
             ATTR_MESSAGE: data.get("message"),
             "name": data.get("name"),
+            "execution_seconds": self.coordinator.data.get("execution_seconds"),
         }

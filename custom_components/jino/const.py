@@ -5,7 +5,7 @@ DOMAIN = "jino"
 INTEGRATION_NAME = "Billing Monitor"
 MANUFACTURER = "Jino"
 
-PLATFORMS = ["sensor"]
+PLATFORMS = ["sensor", "button"]
 
 DATA_COORDINATOR = "coordinator"
 DATA_UNSUB_OPTIONS = "unsub_options"
