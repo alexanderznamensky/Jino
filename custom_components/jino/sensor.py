@@ -32,6 +32,8 @@ from .const import (
     DOMAIN,
     INTEGRATION_NAME,
     MANUFACTURER,
+    ATTR_BLOCKED,
+    ATTR_YEAR_COST,
 )
 
 
@@ -202,6 +204,8 @@ class NightscoutSensor(BaseBillingEntity):
             ATTR_DUE_DATE: data.get("expire_date"),
             ATTR_DAYS_LEFT: data.get("days_left"),
             ATTR_MESSAGE: data.get("message"),
+            ATTR_BLOCKED: data.get("blocked"),
+            ATTR_YEAR_COST: data.get("year_cost"),
             "name": data.get("name"),
             "execution_seconds": self.coordinator.data.get("execution_seconds"),
         }

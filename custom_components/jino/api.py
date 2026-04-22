@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urljoin
 
+import base64
+import html
 import requests
 from bs4 import BeautifulSoup
 
@@ -198,13 +200,13 @@ class JinoDomainsClient:
         )
 
     @staticmethod
-    def _extract_csrf(html: str) -> str | None:
+    def _extract_csrf(html_text: str) -> str | None:
         patterns = [
             r"myv\.csrftoken\s*=\s*'([^']+)'",
             r'name=["\']csrfmiddlewaretoken["\']\s+value=["\']([^"\']+)["\']',
         ]
         for pattern in patterns:
-            match = re.search(pattern, html)
+            match = re.search(pattern, html_text)
             if match:
                 return match.group(1)
         return None
@@ -389,6 +391,40 @@ class JinoDomainsClient:
 class NightscoutEasyClient:
     CP_URL = "https://cp.nightscout-easy.ru/"
     AUTH_BASE = "https://auth.nightscout-easy.ru"
+    NIGHTSCOUT_GRAPHQL_URL = "https://graphql.nightscout-easy.ru/user/"
+
+    NIGHTSCOUT_ACCOUNTS_QUERY = """
+    query NightscoutAccounts {
+      me {
+        nightscoutAccounts {
+          nodes {
+            id
+            name
+            blocked
+            paidTill
+            __typename
+          }
+          __typename
+        }
+        __typename
+      }
+    }
+    """
+
+    NIGHTSCOUT_PRICES_QUERY = """
+    query NightscoutPrices($noPromo: Boolean, $nightscoutId: ID) {
+      nightscout {
+        prices(noPromo: $noPromo, nightscoutId: $nightscoutId) {
+          months
+          price
+          basePrice
+          promo
+          __typename
+        }
+        __typename
+      }
+    }
+    """
 
     def __init__(self, account: NightscoutAccount, timeout: int = 30) -> None:
         self._account = account
@@ -403,51 +439,89 @@ class NightscoutEasyClient:
                 )
             }
         )
-        self._last_html: str | None = None
-
-    @staticmethod
-    def _extract_form_payload(form: BeautifulSoup) -> dict[str, str]:
-        payload: dict[str, str] = {}
-
-        for inp in form.find_all("input"):
-            name = inp.get("name")
-            if not name:
-                continue
-            payload[name] = inp.get("value", "")
-
-        data_form_raw = form.get("data-form")
-        if data_form_raw:
-            data_form = json.loads(data_form_raw)
-            for field in data_form.get("fields", []):
-                name = field.get("name")
-                if not name:
-                    continue
-                payload[name] = field.get("value") if field.get("value") is not None else ""
-
-        return payload
+        self._accounts_cache: list[dict[str, Any]] | None = None
+        self._current_account_cache: dict[str, Any] | None = None
+        self._prices_cache: dict[str, list[dict[str, Any]]] = {}
+        self._current_cp_url: str | None = None
 
     def _get_login_page(self) -> tuple[str, str]:
         response = self._session.get(self.CP_URL, timeout=self._timeout, allow_redirects=True)
         response.raise_for_status()
         return response.url, response.text
 
-    def authenticate(self) -> None:
-        login_url, html = self._get_login_page()
+    @staticmethod
+    def _extract_form_action(html_text: str, base_url: str) -> str:
+        match = re.search(
+            r'<form[^>]*action=["\']([^"\']+)["\']',
+            html_text,
+            re.IGNORECASE | re.DOTALL,
+        )
+        action = match.group(1).strip() if match else base_url
 
-        soup = BeautifulSoup(html, "html.parser")
-        form = soup.find("form")
-        if not form:
-            raise BillingApiError("Nightscout login form not found")
-
-        action = form.get("action") or login_url
         if action.startswith("/"):
-            action = urljoin(self.AUTH_BASE, action)
-        elif action.startswith("?"):
-            action = login_url.split("?", 1)[0] + action
-        elif not action.startswith("http"):
-            action = urljoin(self.AUTH_BASE + "/", action.lstrip("/"))
+            return urljoin(NightscoutEasyClient.AUTH_BASE, action)
+        if action.startswith("?"):
+            return base_url.split("?", 1)[0] + action
+        if not action.startswith("http"):
+            return urljoin(NightscoutEasyClient.AUTH_BASE + "/", action.lstrip("/"))
 
-        payload = self._extract_form_payload(form)
+        return action
+
+    @staticmethod
+    def _extract_inputs_from_html(html_text: str) -> dict[str, str]:
+        payload: dict[str, str] = {}
+
+        input_pattern = re.compile(r"<input\b([^>]*)>", re.IGNORECASE | re.DOTALL)
+        attr_pattern = re.compile(
+            r'([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*["\']([^"\']*)["\']',
+            re.IGNORECASE | re.DOTALL,
+        )
+
+        for input_match in input_pattern.finditer(html_text):
+            attrs_raw = input_match.group(1)
+            attrs = {k.lower(): html.unescape(v) for k, v in attr_pattern.findall(attrs_raw)}
+
+            name = attrs.get("name")
+            if not name:
+                continue
+
+            payload[name] = attrs.get("value", "")
+
+        return payload
+
+    @staticmethod
+    def _extract_data_form_payload(html_text: str) -> dict[str, str]:
+        payload: dict[str, str] = {}
+
+        match = re.search(
+            r'data-form=["\']([^"\']+)["\']',
+            html_text,
+            re.IGNORECASE | re.DOTALL,
+        )
+        if not match:
+            return payload
+
+        raw_data_form = html.unescape(match.group(1))
+
+        try:
+            data_form = json.loads(raw_data_form)
+        except json.JSONDecodeError:
+            return payload
+
+        for field in data_form.get("fields", []):
+            name = field.get("name")
+            if not name:
+                continue
+            payload[name] = field.get("value") if field.get("value") is not None else ""
+
+        return payload
+
+    def authenticate(self) -> None:
+        login_url, html_text = self._get_login_page()
+
+        action = self._extract_form_action(html_text, login_url)
+        payload = self._extract_inputs_from_html(html_text)
+        payload.update(self._extract_data_form_payload(html_text))
 
         if "login" in payload:
             payload["login"] = self._account.login
@@ -481,34 +555,171 @@ class NightscoutEasyClient:
             allow_redirects=True,
         )
         response.raise_for_status()
+        self._current_cp_url = response.url
 
-        # После allow_redirects=True здесь уже финальная страница аккаунта.
-        self._last_html = response.text
-
-    def fetch_cp_html(self) -> str:
-        if self._last_html:
-            return self._last_html
-
-        response = self._session.get(self.CP_URL, timeout=self._timeout, allow_redirects=True)
-        response.raise_for_status()
-        self._last_html = response.text
-        return self._last_html
+        try:
+            self._get_bearer_token()
+        except BillingApiError as err:
+            raise BillingApiError(
+                f"Nightscout auth succeeded without bearer token. Final URL: {self._current_cp_url}"
+            ) from err
 
     @staticmethod
-    def parse_info(html: str) -> dict[str, Any]:
-        soup = BeautifulSoup(html, "html.parser")
-        text = soup.get_text("\n", strip=True)
-
-        name = None
-        expire_date = None
-
-        match = re.search(r"\b(Nightscout\s+[^\n\r]+)", text)
+    def extract_account_slug(url: str) -> str | None:
+        match = re.search(r"/ru/([a-zA-Z0-9]+)/?", url)
         if match:
-            name = match.group(1).strip()
+            return match.group(1)
+        return None
 
-        match = re.search(r"Сервис\s+доступен\s+до\s+(\d{2}\.\d{2}\.\d{4})", text, re.IGNORECASE)
-        if match:
-            expire_date = match.group(1)
+    @staticmethod
+    def make_nightscout_graphql_id(slug: str) -> str:
+        raw = f"NightscoutAccount:{slug}"
+        return base64.b64encode(raw.encode("utf-8")).decode("ascii")
+
+    @staticmethod
+    def normalize_api_date(date_str: str | None) -> str | None:
+        if not date_str:
+            return None
+
+        date_str = date_str.strip()
+
+        for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%S%z"):
+            try:
+                dt = datetime.datetime.strptime(date_str, fmt)
+                return dt.strftime("%d.%m.%Y")
+            except ValueError:
+                continue
+
+        return None
+
+    def _get_bearer_token(self) -> str:
+        possible_cookie_names = [
+            "auth._token.keycloak",
+            "auth._token",
+            "token",
+            "access_token",
+        ]
+
+        for name in possible_cookie_names:
+            token = self._session.cookies.get(name)
+            if token:
+                return token
+
+        for cookie in self._session.cookies:
+            cname = cookie.name.lower()
+            if "token" in cname or "keycloak" in cname:
+                return cookie.value
+
+        raise BillingApiError("Nightscout bearer token not found in session cookies")
+
+    def _gql(
+        self,
+        query: str,
+        variables: dict[str, Any] | None = None,
+        operation_name: str | None = None,
+    ) -> dict[str, Any]:
+        token = self._get_bearer_token()
+
+        payload: dict[str, Any] = {
+            "query": query,
+            "variables": variables or {},
+        }
+        if operation_name:
+            payload["operationName"] = operation_name
+
+        response = self._session.post(
+            self.NIGHTSCOUT_GRAPHQL_URL,
+            headers={
+                "Accept": "*/*",
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {token}",
+                "Origin": "https://cp.nightscout-easy.ru",
+                "Referer": "https://cp.nightscout-easy.ru/",
+            },
+            json=payload,
+            timeout=self._timeout,
+        )
+        response.raise_for_status()
+
+        data = response.json()
+        if data.get("errors"):
+            raise BillingApiError(json.dumps(data["errors"], ensure_ascii=False))
+
+        return data
+
+    def get_accounts(self) -> list[dict[str, Any]]:
+        if self._accounts_cache is not None:
+            return self._accounts_cache
+
+        result = self._gql(
+            self.NIGHTSCOUT_ACCOUNTS_QUERY,
+            variables={},
+            operation_name="NightscoutAccounts",
+        )
+        self._accounts_cache = result["data"]["me"]["nightscoutAccounts"]["nodes"]
+        return self._accounts_cache
+
+    def get_current_account(self) -> dict[str, Any]:
+        if self._current_account_cache is not None:
+            return self._current_account_cache
+
+        accounts = self.get_accounts()
+        if not accounts:
+            raise BillingApiError("Nightscout accounts not found")
+
+        if len(accounts) == 1:
+            self._current_account_cache = accounts[0]
+            return self._current_account_cache
+
+        slug = self.extract_account_slug(self._current_cp_url or "")
+        if slug:
+            expected_id = self.make_nightscout_graphql_id(slug)
+            for account in accounts:
+                if account.get("id") == expected_id:
+                    self._current_account_cache = account
+                    return self._current_account_cache
+
+        for account in accounts:
+            account_name = str(account.get("name") or "").lower()
+            if self._account.login.lower() in account_name:
+                self._current_account_cache = account
+                return self._current_account_cache
+
+        self._current_account_cache = accounts[0]
+        return self._current_account_cache
+
+    def get_prices(self, nightscout_id: str) -> list[dict[str, Any]]:
+        if nightscout_id in self._prices_cache:
+            return self._prices_cache[nightscout_id]
+
+        result = self._gql(
+            self.NIGHTSCOUT_PRICES_QUERY,
+            variables={
+                "noPromo": True,
+                "nightscoutId": nightscout_id,
+            },
+            operation_name="NightscoutPrices",
+        )
+
+        prices = result["data"]["nightscout"]["prices"]
+        self._prices_cache[nightscout_id] = prices
+        return prices
+
+    def get_info(self) -> dict[str, Any]:
+        account = self.get_current_account()
+
+        name = account.get("name")
+        blocked = account.get("blocked")
+        expire_date = self.normalize_api_date(account.get("paidTill"))
+        nightscout_id = account.get("id")
+
+        year_cost = None
+        if nightscout_id:
+            prices = self.get_prices(nightscout_id)
+            for item in prices:
+                if item.get("months") == 12:
+                    year_cost = item.get("price")
+                    break
 
         message = None
         days_left = None
@@ -517,10 +728,9 @@ class NightscoutEasyClient:
 
         return {
             "name": name,
+            "blocked": blocked,
             "expire_date": expire_date,
+            "year_cost": year_cost,
             "days_left": days_left,
             "message": message,
         }
-
-    def get_info(self) -> dict[str, Any]:
-        return self.parse_info(self.fetch_cp_html())

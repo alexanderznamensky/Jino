@@ -38,3 +38,6 @@ ATTR_EXPIRING = "expiring"
 ATTR_RENEWAL_COST = "renewal_cost"
 ATTR_RENEWAL_AVAILABLE = "renewal_available"
 ATTR_CAN_BE_RENEWED_FROM_BALANCE = "can_be_renewed_from_balance"
+
+ATTR_YEAR_COST = "year_cost"
+ATTR_BLOCKED = "blocked"
