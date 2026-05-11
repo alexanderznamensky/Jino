@@ -1,8 +1,8 @@
 {
   "config": {
-    "flow_title": "Jino data parser",
+    "flow_title": "Настройка Джино",
     "abort": {
-      "already_configured": "Этот аккаунт Jino уже настроен.",
+      "already_configured": "Этот аккаунт Джино уже настроен.",
       "reconfigure_successful": "Повторная настройка выполнена успешно."
     },
     "error": {
@@ -13,11 +13,11 @@
     },
     "step": {
       "user": {
-        "title": "Добавление Jino data parser",
-        "description": "Введите логин и пароль Jino.",
+        "title": "Настройка Джино",
+        "description": "Введите логин и пароль Джино.",
         "data": {
-          "jino_login": "Логин Jino",
-          "jino_password": "Пароль Jino",
+          "jino_login": "Логин Джино",
+          "jino_password": "Пароль Джино",
           "scan_interval_minutes": "Интервал обновления, минут"
         }
       },
@@ -29,27 +29,27 @@
           "nightscout_login": "Логин Nightscout",
           "nightscout_password": "Пароль Nightscout",
           "add_another": "Добавить ещё один аккаунт",
-          "jino_data_parser": "Jino data parser"
+          "jino_data_parser": "Джино data parser"
         }
       },
       "reconfigure": {
-        "title": "Повторная настройка Jino data parser",
+        "title": "Повторная настройка Джино",
         "description": "Обновите учётные данные и параметры.",
         "data": {
-          "jino_login": "Логин Jino",
-          "jino_password": "Пароль Jino",
+          "jino_login": "Логин Джино",
+          "jino_password": "Пароль Джино",
           "scan_interval_minutes": "Интервал обновления, минут"
         }
       },
       "reconfigure_nightscout_account": {
-        "title": "Настройка Nightscout",
+        "title": "Повторная настройка Nightscout",
         "description": "Обновите список аккаунтов Nightscout. Если авторизация отключена, а логин и пароль пустые, интеграция будет сохранена без сенсоров Nightscout.",
         "data": {
           "use_nightscout_auth": "Использовать авторизацию Nightscout",
           "nightscout_login": "Логин Nightscout",
           "nightscout_password": "Пароль Nightscout",
           "add_another": "Добавить ещё один аккаунт",
-          "jino_data_parser": "Jino data parser"
+          "jino_data_parser": "Джино data parser"
         }
       }
     }
@@ -57,7 +57,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Параметры Jino data parser",
+        "title": "Параметры Джино",
         "description": "Измените интервал обновления.",
         "data": {
           "scan_interval_minutes": "Интервал обновления, минут"
