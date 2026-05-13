@@ -90,7 +90,7 @@ class JinoBalanceSensor(BaseBillingEntity):
         value = self.coordinator.data.get("jino", {}).get("balance", {}).get("funds")
         if value is None:
             return None
-        return round(float(value), 2)
+        return float(f"{float(value):.2f}")
 
     @property
     def extra_state_attributes(self):

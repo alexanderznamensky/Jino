@@ -18,7 +18,7 @@
         "data": {
           "jino_login": "Логин Джино",
           "jino_password": "Пароль Джино",
-          "scan_interval_minutes": "Интервал обновления, минут"
+          "scan_interval_minutes": "Интервал обновления, мин."
         }
       },
       "nightscout_account": {
@@ -38,7 +38,7 @@
         "data": {
           "jino_login": "Логин Джино",
           "jino_password": "Пароль Джино",
-          "scan_interval_minutes": "Интервал обновления, минут"
+          "scan_interval_minutes": "Интервал обновления, мин."
         }
       },
       "reconfigure_nightscout_account": {
@@ -60,7 +60,7 @@
         "title": "Параметры Джино",
         "description": "Измените интервал обновления.",
         "data": {
-          "scan_interval_minutes": "Интервал обновления, минут"
+          "scan_interval_minutes": "Интервал обновления, мин."
         }
       }
     },
