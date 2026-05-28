@@ -1,17 +1,16 @@
 from __future__ import annotations
 
+import base64
 import datetime
+import html
 import json
 import re
 import time
 from dataclasses import dataclass
 from typing import Any
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
-import base64
-import html
 import requests
-from bs4 import BeautifulSoup
 
 
 class BillingApiError(Exception):
@@ -116,9 +115,9 @@ def parse_nightscout_accounts(raw: str | list[dict[str, Any]] | None) -> list[Ni
 
 
 class JinoDomainsClient:
-    LOGIN_PAGE = "https://auth.jino.ru/login/"
+    CP_URL = "https://cp.jino.ru/"
     GRAPHQL_URL = "https://graphql.jino.ru/user/"
-    REFERER = "https://cp.jino.ru/domains/"
+    REFERER = "https://cp.jino.ru/"
 
     LIST_DOMAINS_QUERY = """
     query ListDomains($first: Int, $after: String, $sort: [UserDomainSortEnum!]) {
@@ -189,27 +188,95 @@ class JinoDomainsClient:
         self._credentials = credentials
         self._timeout = timeout
         self._session = requests.Session()
+
+        # Важно для HassWP/Windows: не брать HTTP_PROXY/HTTPS_PROXY из окружения.
+        self._session.trust_env = False
+
         self._session.headers.update(
             {
                 "User-Agent": (
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                     "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/147.0.0.0 Safari/537.36"
-                )
+                    "Chrome/148.0.0.0 Safari/537.36"
+                ),
+                "Accept-Language": "ru,en-US;q=0.9,en;q=0.8",
             }
         )
 
+    def _get_login_page(self) -> tuple[str, str]:
+        response = self._session.get(
+            self.CP_URL,
+            timeout=self._timeout,
+            allow_redirects=True,
+        )
+        response.raise_for_status()
+        return response.url, response.text
+
     @staticmethod
-    def _extract_csrf(html_text: str) -> str | None:
-        patterns = [
-            r"myv\.csrftoken\s*=\s*'([^']+)'",
-            r'name=["\']csrfmiddlewaretoken["\']\s+value=["\']([^"\']+)["\']',
-        ]
-        for pattern in patterns:
-            match = re.search(pattern, html_text)
-            if match:
-                return match.group(1)
-        return None
+    def _extract_form_action(html_text: str, base_url: str) -> str:
+        match = re.search(
+            r'<form[^>]*action=["\']([^"\']+)["\']',
+            html_text,
+            re.IGNORECASE | re.DOTALL,
+        )
+
+        if not match:
+            return base_url
+
+        action = html.unescape(match.group(1).strip())
+
+        # Критично: собираем action относительно реального login_url,
+        # а не относительно захардкоженного https://login.jino.ru
+        return urljoin(base_url, action)
+
+    @staticmethod
+    def _extract_inputs_from_html(html_text: str) -> dict[str, str]:
+        payload: dict[str, str] = {}
+
+        input_pattern = re.compile(r"<input\b([^>]*)>", re.IGNORECASE | re.DOTALL)
+        attr_pattern = re.compile(
+            r'([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*["\']([^"\']*)["\']',
+            re.IGNORECASE | re.DOTALL,
+        )
+
+        for input_match in input_pattern.finditer(html_text):
+            attrs_raw = input_match.group(1)
+            attrs = {k.lower(): html.unescape(v) for k, v in attr_pattern.findall(attrs_raw)}
+
+            name = attrs.get("name")
+            if not name:
+                continue
+
+            payload[name] = attrs.get("value", "")
+
+        return payload
+
+    @staticmethod
+    def _extract_data_form_payload(html_text: str) -> dict[str, str]:
+        payload: dict[str, str] = {}
+
+        match = re.search(
+            r'data-form=["\']([^"\']+)["\']',
+            html_text,
+            re.IGNORECASE | re.DOTALL,
+        )
+        if not match:
+            return payload
+
+        raw_data_form = html.unescape(match.group(1))
+
+        try:
+            data_form = json.loads(raw_data_form)
+        except json.JSONDecodeError:
+            return payload
+
+        for field in data_form.get("fields", []):
+            name = field.get("name")
+            if not name:
+                continue
+            payload[name] = field.get("value") if field.get("value") is not None else ""
+
+        return payload
 
     @staticmethod
     def _is_retryable_error(err: Exception) -> bool:
@@ -225,37 +292,90 @@ class JinoDomainsClient:
         return False
 
     def authenticate(self) -> None:
-        response = self._session.get(self.LOGIN_PAGE, timeout=self._timeout)
-        response.raise_for_status()
+        login_url, html_text = self._get_login_page()
 
-        csrf = self._extract_csrf(response.text)
-        if not csrf:
-            raise BillingApiError("Jino CSRF token not found")
+        action = self._extract_form_action(html_text, login_url)
+
+        payload = self._extract_inputs_from_html(html_text)
+        payload.update(self._extract_data_form_payload(html_text))
+
+        if "username" in payload:
+            payload["username"] = self._credentials.login
+        elif "login" in payload:
+            payload["login"] = self._credentials.login
+        elif "email" in payload:
+            payload["email"] = self._credentials.login
+        else:
+            raise BillingApiError(
+                f"Jino login field not found. "
+                f"Login URL: {login_url}. Action: {action}. Keys: {list(payload.keys())}"
+            )
+
+        if "password" in payload:
+            payload["password"] = self._credentials.password
+        elif "passwd" in payload:
+            payload["passwd"] = self._credentials.password
+        else:
+            raise BillingApiError(
+                f"Jino password field not found. "
+                f"Login URL: {login_url}. Action: {action}. Keys: {list(payload.keys())}"
+            )
+
+        parsed_action = urlparse(action)
+        origin = f"{parsed_action.scheme}://{parsed_action.netloc}"
 
         response = self._session.post(
-            self.LOGIN_PAGE,
-            data={
-                "login": self._credentials.login,
-                "password": self._credentials.password,
-                "csrfmiddlewaretoken": csrf,
-            },
+            action,
+            data=payload,
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
-                "Origin": "https://auth.jino.ru",
-                "Referer": self.LOGIN_PAGE,
+                "Origin": origin,
+                "Referer": login_url,
             },
-            allow_redirects=True,
             timeout=self._timeout,
+            allow_redirects=True,
         )
         response.raise_for_status()
 
+        try:
+            self._get_bearer_token()
+        except BillingApiError as err:
+            cookie_names = [cookie.name for cookie in self._session.cookies]
+            raise BillingApiError(
+                f"Jino auth succeeded without bearer token. "
+                f"Login URL: {login_url}. "
+                f"Action: {action}. "
+                f"Final URL: {response.url}. "
+                f"Cookies: {cookie_names}"
+            ) from err
+
+    def _get_bearer_token(self) -> str:
+        possible_cookie_names = [
+            "auth._token.keycloak",
+            "auth._token",
+            "token",
+            "access_token",
+            "kc-access",
+            "jino_access_token",
+        ]
+
+        for name in possible_cookie_names:
+            token = self._session.cookies.get(name)
+            if token:
+                return token
+
+        for cookie in self._session.cookies:
+            cname = cookie.name.lower()
+            if "token" in cname or "keycloak" in cname or "access" in cname:
+                return cookie.value
+
+        raise BillingApiError("Jino bearer token not found in session cookies")
+
     def _build_headers(self) -> dict[str, str]:
-        token = self._session.cookies.get("auth._token.keycloak")
-        if not token:
-            raise BillingApiError("Jino bearer token not found in cookies")
+        token = self._get_bearer_token()
 
         return {
-            "Accept": "*/*",
+            "Accept": "application/json",
             "Content-Type": "application/json",
             "Authorization": f"Bearer {token}",
             "Origin": "https://cp.jino.ru",
@@ -293,7 +413,11 @@ class JinoDomainsClient:
 
                 return data
 
-            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, requests.exceptions.HTTPError) as err:
+            except (
+                requests.exceptions.Timeout,
+                requests.exceptions.ConnectionError,
+                requests.exceptions.HTTPError,
+            ) as err:
                 last_error = err
 
                 if not self._is_retryable_error(err):
@@ -430,6 +554,10 @@ class NightscoutEasyClient:
         self._account = account
         self._timeout = timeout
         self._session = requests.Session()
+
+        # Чтобы Nightscout тоже не зависел от системного proxy.
+        self._session.trust_env = False
+
         self._session.headers.update(
             {
                 "User-Agent": (
@@ -456,16 +584,12 @@ class NightscoutEasyClient:
             html_text,
             re.IGNORECASE | re.DOTALL,
         )
-        action = match.group(1).strip() if match else base_url
 
-        if action.startswith("/"):
-            return urljoin(NightscoutEasyClient.AUTH_BASE, action)
-        if action.startswith("?"):
-            return base_url.split("?", 1)[0] + action
-        if not action.startswith("http"):
-            return urljoin(NightscoutEasyClient.AUTH_BASE + "/", action.lstrip("/"))
+        if not match:
+            return base_url
 
-        return action
+        action = html.unescape(match.group(1).strip())
+        return urljoin(base_url, action)
 
     @staticmethod
     def _extract_inputs_from_html(html_text: str) -> dict[str, str]:
@@ -543,12 +667,15 @@ class NightscoutEasyClient:
         if csrftoken and "csrfmiddlewaretoken" not in payload:
             payload["csrfmiddlewaretoken"] = csrftoken
 
+        parsed_action = urlparse(action)
+        origin = f"{parsed_action.scheme}://{parsed_action.netloc}"
+
         response = self._session.post(
             action,
             data=payload,
             headers={
                 "Content-Type": "application/x-www-form-urlencoded",
-                "Origin": self.AUTH_BASE,
+                "Origin": origin,
                 "Referer": login_url,
             },
             timeout=self._timeout,

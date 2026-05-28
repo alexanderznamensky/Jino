@@ -1,7 +1,7 @@
 {
   "domain": "jino",
   "name": "Джино",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "documentation": "https://github.com/alexanderznamensky/Jino",
   "issue_tracker": "https://github.com/alexanderznamensky/Jino/issues",
   "requirements": [
