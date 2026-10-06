@@ -337,47 +337,21 @@ class JinoDomainsClient:
         )
         response.raise_for_status()
 
-        try:
-            self._get_bearer_token()
-        except BillingApiError as err:
+        # Jino authenticates GraphQL requests using the session cookies
+        # created during the OIDC/PKCE login flow. The jino_access cookie
+        # must not be sent as an Authorization: Bearer token.
+        if not self._session.cookies.get("jino_logged_in"):
             cookie_names = [cookie.name for cookie in self._session.cookies]
             raise BillingApiError(
-                f"Jino auth succeeded without bearer token. "
-                f"Login URL: {login_url}. "
-                f"Action: {action}. "
+                f"Jino authentication did not create an authenticated session. "
                 f"Final URL: {response.url}. "
                 f"Cookies: {cookie_names}"
-            ) from err
-
-    def _get_bearer_token(self) -> str:
-        possible_cookie_names = [
-            "auth._token.keycloak",
-            "auth._token",
-            "token",
-            "access_token",
-            "kc-access",
-            "jino_access_token",
-        ]
-
-        for name in possible_cookie_names:
-            token = self._session.cookies.get(name)
-            if token:
-                return token
-
-        for cookie in self._session.cookies:
-            cname = cookie.name.lower()
-            if "token" in cname or "keycloak" in cname or "access" in cname:
-                return cookie.value
-
-        raise BillingApiError("Jino bearer token not found in session cookies")
+            )
 
     def _build_headers(self) -> dict[str, str]:
-        token = self._get_bearer_token()
-
         return {
             "Accept": "application/json",
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {token}",
             "Origin": "https://cp.jino.ru",
             "Referer": self.REFERER,
         }
